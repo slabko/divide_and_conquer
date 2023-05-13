@@ -13,4 +13,6 @@ std::string string_from_bigint(bigint const& n);
 
 bigint add(bigint const& lhs, bigint const& rhs);
 
+bigint subtract(bigint const& lhs, bigint const& rhs);
+
 bigint multiply(bigint const& lhs, bigint const& rhs);

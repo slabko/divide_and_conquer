@@ -1,6 +1,7 @@
 #include "product.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <execution>
 #include <stdexcept>
 
@@ -32,10 +33,100 @@ std::string string_from_bigint(bigint const & n)
     return res;
 }
 
+inline bool not_zero(uint8_t x)
+{
+    return x != 0;
+}
+
 std::pair<uint8_t, uint8_t> add(uint8_t a, uint8_t b, uint8_t carry)
 {
     uint8_t res = a + b + carry;
     return {res % 10, res / 10};
+}
+
+std::pair<uint8_t, uint8_t> subtract(uint8_t a, uint8_t b, uint8_t carry)
+{
+    b += carry;
+    if (a >= b)
+    {
+        return {a - b, 0};
+    }
+
+    return {10 + a - b, 1};
+}
+
+
+bigint add(bigint const & lhs, bigint const & rhs)
+{
+    auto as = lhs;
+    auto bs = rhs;
+
+    // `as` should be longer or the same as `bs`
+    if (as.size() < bs.size())
+    {
+        std::swap(as, bs);
+    }
+
+    bigint res{};
+    res.reserve(as.size() + 1); // the res cannot be any longer than bs.size() + 1
+
+    uint8_t carry = 0;
+
+    auto a = as.crbegin();
+    for (auto b = bs.crbegin(); b < bs.crend(); ++a, ++b)
+    {
+        auto [r, new_carry] = add(*a, *b, carry);
+        res.push_back(r);
+        carry = new_carry;
+    }
+
+    for (; a < as.crend(); ++a)
+    {
+        auto [r, new_carry] = add(*a, 0, carry);
+        res.push_back(r);
+        carry = new_carry;
+    }
+
+    if (carry)
+    {
+        res.push_back(carry);
+    }
+
+    std::reverse(res.begin(), res.end());
+    return res;
+}
+
+bigint subtract(bigint const & as, bigint const & bs)
+{
+    assert(as.size() >= bs.size());
+
+    bigint res{};
+    res.reserve(as.size());
+
+    uint8_t carry = 0;
+
+    auto a = as.crbegin();
+    for (auto b = bs.crbegin(); b < bs.crend(); ++b, ++a)
+    {
+        auto [r, new_carry] = subtract(*a, *b, carry);
+        res.push_back(r);
+        carry = new_carry;
+    }
+
+    for (; a < as.crend(); ++a)
+    {
+        auto [r, new_carry] = subtract(*a, 0, carry);
+        res.push_back(r);
+        carry = new_carry;
+    }
+
+    assert(carry == 0);
+
+    auto trailing_zeros_end = std::find_if(res.crbegin(), res.crend(), not_zero);
+    res.erase(trailing_zeros_end.base(), res.end());
+    std::reverse(res.begin(), res.end());
+
+    return res;
 }
 
 std::pair<bigint, bigint> split(bigint const & val, size_t n)
@@ -56,21 +147,25 @@ std::pair<bigint, bigint> split(bigint const & val, size_t n)
     b.reserve(n);
 
     std::copy(val.cbegin(), val.cend() - n, std::back_inserter(a));
-    std::copy(val.cend() - n, val.cend(), std::back_inserter(b));
+
+    auto leading_zeros_end = std::find_if(val.cend() - n, val.cend(), not_zero);
+    std::copy(leading_zeros_end, val.cend(), std::back_inserter(b));
 
     return {a, b};
 }
 
-bigint power_ten(bigint const& val, uint8_t power)
+bigint power_ten(bigint const & val, uint8_t power)
 {
-    if (val.empty()) {
+    if (val.empty())
+    {
         return val;
     }
 
     auto res = val;
     res.reserve(res.size() + power);
 
-    for (uint8_t i = 0; i < power; ++i) {
+    for (uint8_t i = 0; i < power; ++i)
+    {
         res.push_back(0);
     }
 
@@ -101,51 +196,15 @@ bigint multiply(bigint const & lhs, bigint const & rhs)
     auto [a, b] = split(lhs, n);
     auto [c, d] = split(rhs, n);
 
-    auto first_term = power_ten(multiply(a, c), 2 * n);
-    auto second_term = power_ten(add(multiply(a, d), multiply(b, c)), n);
-    auto third_term = multiply(b, d);
+    auto ac = multiply(a, c);
+    auto bd = multiply(b, d);
+    auto ad_plus_bc = multiply(add(a, b), add(c, d));
+    ad_plus_bc = subtract(ad_plus_bc, ac);
+    ad_plus_bc = subtract(ad_plus_bc, bd);
 
-    auto res = add(first_term, second_term);
-    res = add(res, third_term);
-    return res;
-}
+    auto res = power_ten(ac, 2 * n);
+    res = add(res, power_ten(ad_plus_bc, n));
+    res = add(res, bd);
 
-bigint add(bigint const & lhs, bigint const & rhs)
-{
-    auto as = lhs;
-    auto bs = rhs;
-
-    // `bs` should be longer or the same as `as`
-    if (as.size() > bs.size())
-    {
-        std::swap(as, bs);
-    }
-
-    bigint res{};
-    res.reserve(bs.size() + 1); // the res cannot be any longer than bs.size() + 1
-
-    uint8_t carry = 0;
-
-    auto b = bs.crbegin();
-    for (auto a = as.crbegin(); a < as.crend(); ++a, ++b)
-    {
-        auto [r, new_carry] = add(*a, *b, carry);
-        res.push_back(r);
-        carry = new_carry;
-    }
-
-    for (; b < bs.crend(); ++b)
-    {
-        auto [r, new_carry] = add(0, *b, carry);
-        res.push_back(r);
-        carry = new_carry;
-    }
-
-    if (carry)
-    {
-        res.push_back(carry);
-    }
-
-    std::reverse(res.begin(), res.end());
     return res;
 }
