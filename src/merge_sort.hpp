@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <cmath>
 
 template <typename InputIt, typename OutputIt, typename CompFunc>
 inline static void merge(OutputIt dst, InputIt left, InputIt right, InputIt end, CompFunc comp)
