@@ -4,24 +4,30 @@
 #include <cmath>
 
 template <typename InputIt, typename OutputIt, typename CompFunc>
-inline static void merge(OutputIt dst, InputIt left, InputIt right, InputIt end, CompFunc comp)
+inline static int merge(OutputIt dst, InputIt first, InputIt middle, InputIt last, CompFunc comp)
 {
-    auto split = right;
-    for (; left != split; ++left)
+    size_t inversions = 0;
+
+    auto split = middle;
+    for (; first != split; ++first)
     {
-        for (; right != end && comp(*right, *left); ++right)
+        for (; middle != last && comp(*middle, *first); ++middle)
         {
-            *dst++ = *right;
+            inversions += std::distance(first, split);
+            *dst++ = *middle;
         }
-        *dst++ = *left;
+        *dst++ = *first;
     }
 
-    std::copy(right, end, dst);
+    std::copy(middle, last, dst);
+
+    return inversions;
 }
 
 template <typename T, typename CompFunc>
-std::vector<T> merge_sort(std::vector<T> const & data, CompFunc comp)
+std::vector<T> merge_sort(std::vector<T> const & data, CompFunc comp, size_t& inversions)
 {
+    inversions = 0;
     if (data.empty())
         return {};
 
@@ -45,11 +51,33 @@ std::vector<T> merge_sort(std::vector<T> const & data, CompFunc comp)
         int split = std::floor(std::pow(2, i));
         int step = split * 2;
 
-        for (auto it = src->begin(); it <= src->end(); it += step)
+        for (auto first = src->begin(); first <= src->end(); first += step)
         {
-            merge(std::back_inserter(*dst), it, std::min(it + split, src->end()), std::min(it + step, src->end()), comp);
+            auto middle = std::min(first + split, src->end());
+            auto last = std::min(first + step, src->end());
+            inversions += merge(std::back_inserter(*dst), first, middle, last, comp);
         }
     }
 
     return *dst;
 }
+
+template <typename T>
+std::vector<T> merge_sort(std::vector<T> const & data) {
+    size_t inversions{0};
+    auto simple_compare = [](T a, T b){ return a < b; };
+    return merge_sort(data, simple_compare, inversions);
+}
+
+template <typename T>
+std::vector<T> merge_sort(std::vector<T> const & data, size_t& inversions) {
+    auto simple_compare = [](T a, T b){ return a < b; };
+    return merge_sort(data, simple_compare, inversions);
+}
+
+template <typename T, typename CompFunc>
+std::vector<T> merge_sort(std::vector<T> const & data, CompFunc comp) {
+    size_t inversions{0};
+    return merge_sort(data, comp, inversions);
+}
+
