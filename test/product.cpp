@@ -59,6 +59,8 @@ TEST_CASE("Test multiply")
     REQUIRE(multiply("732", "459") == bigint{3, 3, 5, 9, 8, 8});
 
     REQUIRE(multiply("12345", "67890") == bigint_from_string("838102050"));
+
+    REQUIRE(multiply("99999", "9999") == bigint_from_string("999890001"));
 }
 
 TEST_CASE("Test assignment")

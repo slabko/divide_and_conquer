@@ -1,5 +1,9 @@
 #include <random>
+#include <fstream>
+#include <string>
+#include <cstring>
 #include <catch2/catch_test_macros.hpp>
+#include <fmt/core.h>
 
 #include "../src/merge_sort.hpp"
 
@@ -82,4 +86,26 @@ TEST_CASE("Random samples")
         REQUIRE(merge_sort(xs, inversions) == expected);
         REQUIRE(inversions == count_inversions_slow(xs));
     }
+}
+
+TEST_CASE("Assigment 3.5")
+{
+    std::ifstream data_file{};
+    data_file.open("../test/data/problem3.5.txt");
+    REQUIRE(data_file.is_open());
+
+    std::vector<int> nums{};
+
+    std::string line{};
+    while (std::getline(data_file, line)) {
+        REQUIRE(!line.empty());
+        int number = std::stoi(line);
+        nums.push_back(number);
+    }
+
+    size_t inversions{};
+    merge_sort(nums, inversions);
+    REQUIRE(inversions == 2407905288);
+
+    data_file.close();
 }
